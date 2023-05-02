@@ -155,3 +155,52 @@ def edit_account_info(request):
             print(e)
             return Response('Error', status=500)
     return Response('Successful')
+
+@api_view(['POST'])
+def get_account_bank_card(request):
+    data = request.data
+    account_id = data['accountId']
+    with connection.cursor() as cursor:
+        try:
+            query = 'SELECT number, type, expiration_date as expirationDate , bank_name as bankName FROM bank_card '\
+                    'WHERE account_id = %s;'
+            cursor.execute(query, [account_id])
+            datas = dictfetchall(cursor)
+            
+        except Exception as e:
+            print(e)
+            return Response('Error', status=500)
+    return Response(datas)
+
+@api_view(['POST'])
+def delete_account_bank_card(request):
+    data = request.data
+    account_id = data['accountId']
+    number = data['number']
+    with connection.cursor() as cursor:
+        try:
+            query = 'DELETE FROM bank_card ' \
+                    'WHERE account_id = %s AND number = %s;'
+            cursor.execute(query, [account_id, number])
+            
+        except Exception as e:
+            print(e)
+            return Response('Error', status=500)
+    return Response('Successful')
+
+@api_view(['POST'])
+def add_account_bank_card(request):
+    data = request.data
+    account_id = data['accountId']
+    with connection.cursor() as cursor:
+        try:
+            query = 'INSERT INTO bank_card ' \
+                    '(account_id, number, type, expiration_date, bank_name) ' \
+                    'VALUES ' \
+                    '(%s, %s, %s, %s, %s);'
+            cursor.execute(query, [account_id, data['number'], data['type'], data['expirationDate'], data['bankName']])
+            
+        except Exception as e:
+            print(e)
+            return Response('Error', status=500)
+    return Response('Successful')
