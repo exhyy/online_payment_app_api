@@ -5,13 +5,7 @@ from django.db import connection
 
 import hashlib
 
-def dictfetchall(cursor):
-    """
-    Return all rows from a cursor as a dict.
-    Assume the column names are unique.
-    """
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+from .utils import status_dict, gender_dict, calculate_age, dictfetchall
 
 @api_view(['GET'])
 def index_test(request):
@@ -105,13 +99,59 @@ def get_account_payment_preview(request):
     account_id = data['accountId']
     with connection.cursor() as cursor:
         try:
-            query = 'SELECT merchant.name, payment.time, payment.amount ' \
+            query = 'SELECT payment.id, merchant.name, payment.time, payment.amount ' \
                     'FROM payment, merchant, account ' \
                     'WHERE payer_account_id = %s AND payee_account_id = account.id AND account.user_id = merchant.user_id;'
-            print(query)
             cursor.execute(query, [account_id])
             datas = dictfetchall(cursor)
         except Exception as e:
             print(e)
             return Response('Error', status=500)
     return Response(datas)
+
+@api_view(['POST'])
+def get_account_info(request):
+    data = request.data
+    account_id = data['accountId']
+    info = []
+    with connection.cursor() as cursor:
+        try:
+            query = 'SELECT account.status, individual.name, individual.gender, individual.birthday, user.mobile_number ' \
+                    'FROM account, individual, user ' \
+                    'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+            cursor.execute(query, [account_id])
+            row = cursor.fetchone()
+            info.append({'title': '用户状态', 'content': status_dict[row[0]]})
+            info.append({'title': '姓名', 'content': row[1]})
+            info.append({'title': '性别', 'content': gender_dict[row[2]]})
+            info.append({'title': '年龄', 'content': str(calculate_age(row[3]))})
+            info.append({'title': '手机号码', 'content': row[4]})
+        except Exception as e:
+            print(e)
+            return Response('Error', status=500)
+    return Response(info)
+
+@api_view(['POST'])
+def edit_account_info(request):
+    data = request.data
+    account_id = data['accountId']
+    name = data['name']
+    gender = data['gender'] if data['gender'] != 'unknown' else None
+    birthday = data['birthday']
+    with connection.cursor() as cursor:
+        try:
+            query = 'SELECT individual.id '\
+                    'FROM individual, account '\
+                    'WHERE account.id = %s AND account.user_id = individual.user_id;'
+            cursor.execute(query, [account_id])
+            individual_id = cursor.fetchone()[0]
+            
+            query = 'UPDATE individual '\
+                    'SET name = %s, gender = %s, birthday = %s '\
+                    'WHERE id = %s;'
+            cursor.execute(query, [name, gender, birthday, individual_id])
+            
+        except Exception as e:
+            print(e)
+            return Response('Error', status=500)
+    return Response('Successful')
