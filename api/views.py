@@ -19,6 +19,10 @@ def index_test(request):
 @api_view(['POST'])
 def create_user(request):
     data = request.data
+    
+    if data['userType'] not in ['individual', 'merchant']:
+        return Response('Unknown user type', status=500)
+    
     password = hashlib.sha1(data['password'].encode('utf-8')).hexdigest()
     
     with connection.cursor() as cursor:
@@ -41,6 +45,16 @@ def create_user(request):
                     'VALUES' \
                     '(%s, %s, %s)'
             cursor.execute(query, ['normal', 0.0, user_id])
+            
+            # 创建individual或merchant
+            if data['userType'] == 'individual':
+                query = 'INSERT INTO individual ' \
+                        '(name, gender, birthday, user_id) ' \
+                        'VALUES' \
+                        '(%s, %s, %s, %s);'
+                gender = data['gender'] if data['gender'] != 'unknown' else None
+                cursor.execute(query, [data['name'], gender, data['birthday'], user_id])
+                
         except:
             return Response('Failed', status=500)
     return Response('Successful')
