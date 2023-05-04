@@ -9,12 +9,7 @@ from .utils import status_dict, gender_dict, calculate_age, dictfetchall
 
 @api_view(['GET'])
 def index_test(request):
-    with connection.cursor() as cursor:
-        try:
-            cursor.execute('abcd;')
-        except:
-            return Response('Failed', status=404)
-    return Response('Success')
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': 'Welcome'})
 
 @api_view(['POST'])
 def create_user(request):
@@ -27,6 +22,14 @@ def create_user(request):
     
     with connection.cursor() as cursor:
         try:
+            # 检查user是否已经存在
+            query = 'SELECT * FROM user ' \
+                    'WHERE mobile_number = %s;'
+            cursor.execute(query, [data['mobileNumber']])
+            row = cursor.fetchone()
+            if row is not None:
+                return Response({'errCode': 1, 'errMsg': 'User already exists'})
+            
             # 创建user
             query = 'INSERT INTO user' \
                     '(mobile_number, password)' \
@@ -57,7 +60,7 @@ def create_user(request):
                 
         except:
             return Response('Failed', status=500)
-    return Response('Successful')
+    return Response({'errCode': 0, 'errMsg': 'Successful'})
 
 @api_view(['POST'])
 def authenticate_user(request):
@@ -77,7 +80,7 @@ def authenticate_user(request):
                 result = 'unknown'
         except:
             return Response('Error', status=500)
-    return Response(result, status=200)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': result}, status=200)
 
 @api_view(['POST'])
 def get_account_ids(request):
@@ -91,7 +94,7 @@ def get_account_ids(request):
             ids = [row[0] for row in rows]
         except:
             return Response('Error', status=500)
-    return Response(ids)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': ids})
 
 @api_view(['POST'])
 def get_account_balance(request):
@@ -105,7 +108,7 @@ def get_account_balance(request):
             balance = str(row[0])
         except:
             return Response('Error', status=500)
-    return Response({'balance': balance})
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': balance})
 
 @api_view(['POST'])
 def get_account_payment_preview(request):
@@ -121,7 +124,7 @@ def get_account_payment_preview(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response(datas)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': datas})
 
 @api_view(['POST'])
 def get_account_info(request):
@@ -143,7 +146,7 @@ def get_account_info(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response(info)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': info})
 
 @api_view(['POST'])
 def edit_account_info(request):
@@ -168,7 +171,7 @@ def edit_account_info(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response('Successful')
+    return Response({'errCode': 0, 'errMsg': 'Successful'})
 
 @api_view(['POST'])
 def get_account_bank_card(request):
@@ -176,7 +179,8 @@ def get_account_bank_card(request):
     account_id = data['accountId']
     with connection.cursor() as cursor:
         try:
-            query = 'SELECT number, type, expiration_date as expirationDate , bank_name as bankName FROM bank_card '\
+            query = 'SELECT number, type, expiration_date as expirationDate, bank_name as bankName ' \
+                    'FROM bank_card ' \
                     'WHERE account_id = %s;'
             cursor.execute(query, [account_id])
             datas = dictfetchall(cursor)
@@ -184,7 +188,7 @@ def get_account_bank_card(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response(datas)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': datas})
 
 @api_view(['POST'])
 def delete_account_bank_card(request):
@@ -200,7 +204,7 @@ def delete_account_bank_card(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response('Successful')
+    return Response({'errCode': 0, 'errMsg': 'Successful'})
 
 @api_view(['POST'])
 def add_account_bank_card(request):
@@ -208,6 +212,13 @@ def add_account_bank_card(request):
     account_id = data['accountId']
     with connection.cursor() as cursor:
         try:
+            query = 'SELECT * FROM bank_card ' \
+                    'WHERE number = %s;'
+            cursor.execute(query, [data['number']])
+            row = cursor.fetchone()
+            if row is not None:
+                return Response({'errCode': 1, 'errMsg': 'Bank card number already exists'})
+            
             query = 'INSERT INTO bank_card ' \
                     '(account_id, number, type, expiration_date, bank_name) ' \
                     'VALUES ' \
@@ -217,4 +228,4 @@ def add_account_bank_card(request):
         except Exception as e:
             print(e)
             return Response('Error', status=500)
-    return Response('Successful')
+    return Response({'errCode': 0, 'errMsg': 'Successful'})
