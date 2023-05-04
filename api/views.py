@@ -138,7 +138,7 @@ def get_account_info(request):
                     'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
             cursor.execute(query, [account_id])
             row = cursor.fetchone()
-            info.append({'title': '用户状态', 'content': status_dict[row[0]]})
+            info.append({'title': '账户状态', 'content': status_dict[row[0]]})
             info.append({'title': '姓名', 'content': row[1]})
             info.append({'title': '性别', 'content': gender_dict[row[2]]})
             info.append({'title': '年龄', 'content': str(calculate_age(row[3]))})
