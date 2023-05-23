@@ -116,9 +116,7 @@ def get_account_payment_preview(request):
     account_id = data['accountId']
     with connection.cursor() as cursor:
         try:
-            query = 'SELECT payment.id, merchant.name, payment.time, payment.amount ' \
-                    'FROM payment, merchant, account ' \
-                    'WHERE payer_account_id = %s AND payee_account_id = account.id AND account.user_id = merchant.user_id;'
+            query = 'CALL get_account_payment_preview(%s);'
             cursor.execute(query, [account_id])
             datas = dictfetchall(cursor)
         except Exception as e:
@@ -157,16 +155,8 @@ def edit_account_info(request):
     birthday = data['birthday']
     with connection.cursor() as cursor:
         try:
-            query = 'SELECT individual.id '\
-                    'FROM individual, account '\
-                    'WHERE account.id = %s AND account.user_id = individual.user_id;'
-            cursor.execute(query, [account_id])
-            individual_id = cursor.fetchone()[0]
-            
-            query = 'UPDATE individual '\
-                    'SET name = %s, gender = %s, birthday = %s '\
-                    'WHERE id = %s;'
-            cursor.execute(query, [name, gender, birthday, individual_id])
+            query = 'CALL edit_account_info(%s, %s, %s, %s)'
+            cursor.execute(query, [account_id, name, gender, birthday])
             
         except Exception as e:
             print(e)
@@ -197,8 +187,7 @@ def delete_account_bank_card(request):
     number = data['number']
     with connection.cursor() as cursor:
         try:
-            query = 'DELETE FROM bank_card ' \
-                    'WHERE account_id = %s AND number = %s;'
+            query = 'CALL delete_account_bank_card(%s, %s);'
             cursor.execute(query, [account_id, number])
             
         except Exception as e:
@@ -218,11 +207,8 @@ def add_account_bank_card(request):
             row = cursor.fetchone()
             if row is not None:
                 return Response({'errCode': 1, 'errMsg': 'Bank card number already exists'})
-            
-            query = 'INSERT INTO bank_card ' \
-                    '(account_id, number, type, expiration_date, bank_name) ' \
-                    'VALUES ' \
-                    '(%s, %s, %s, %s, %s);'
+
+            query = 'CALL add_account_bank_card(%s, %s, %s, %s, %s);'
             cursor.execute(query, [account_id, data['number'], data['type'], data['expirationDate'], data['bankName']])
             
         except Exception as e:
