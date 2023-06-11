@@ -1,6 +1,7 @@
 django
 djangorestframework
 django-cors-headers
+django-redis
 mysqlclient
 gunicorn
 gevent
