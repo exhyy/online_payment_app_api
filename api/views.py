@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from django.db import connection
+from django.core.cache import cache
 
 import hashlib
 
@@ -215,3 +216,30 @@ def add_account_bank_card(request):
             print(e)
             return Response('Error', status=500)
     return Response({'errCode': 0, 'errMsg': 'Successful'})
+
+@api_view(['POST'])
+def create_temp_payment(request):
+    data = request.data
+    account_id, token = data['accountId'], data['token']
+    cache_key = f'{account_id}_{token}'
+    cache.set(cache_key, {'payer_account_id': None, 'payee_account_id': account_id, 'status': 'waiting'}, timeout=10)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': cache_key})
+
+@api_view(['POST'])
+def renewal_temp_payment(request):
+    data = request.data
+    account_id, token = data['accountId'], data['token']
+    cache_key = f'{account_id}_{token}'
+    cache.expire(cache_key, timeout=10)
+    if cache.ttl(cache_key) == 0:
+        return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
+    return Response({'errCode': 0, 'errMsg': 'Successful'})
+
+@api_view(['POST'])
+def get_temp_payment_status(request):
+    data = request.data
+    cache_key = data['tempPaymentKey']
+    cache.expire(cache_key, timeout=10)
+    if cache.ttl(cache_key) == 0:
+        return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': cache.get(cache_key)['status']})
