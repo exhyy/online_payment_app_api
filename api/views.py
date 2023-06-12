@@ -277,6 +277,9 @@ def lock_temp_payment(request):
     if cache.ttl(temp_payment_key) == 0:
         return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
     else:
+        temp_payment = cache.get(temp_payment_key)
+        if locker_id == temp_payment['payee_account_id']:
+            return Response({'errCode': 3, 'errMsg': 'Payer is the same as the payee'})
         lock_key = f'{temp_payment_key}_lock'
         if cache.set(lock_key, locker_id, nx=True):
             cache.expire(lock_key, timeout=10)
