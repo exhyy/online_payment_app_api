@@ -118,9 +118,15 @@ def get_account_payment_preview(request):
     account_id = data['accountId']
     with connection.cursor() as cursor:
         try:
-            query = 'CALL get_account_payment_preview(%s);'
+            datas = []
+            
+            query = 'CALL get_account_payment_preview_merchant(%s);'
             cursor.execute(query, [account_id])
-            datas = dictfetchall(cursor)
+            datas += dictfetchall(cursor)
+            
+            query = 'CALL get_account_payment_preview_individual(%s);'
+            cursor.execute(query, [account_id])
+            datas += dictfetchall(cursor)
         except Exception as e:
             print(e)
             return Response('Error', status=500)
