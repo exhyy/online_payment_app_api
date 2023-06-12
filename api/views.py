@@ -240,7 +240,21 @@ def renewal_temp_payment(request):
     cache.expire(cache_key, timeout=10)
     if cache.ttl(cache_key) == 0:
         return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
-    return Response({'errCode': 0, 'errMsg': 'Successful'})
+    temp_payment = cache.get(cache_key)
+    payer_name = None
+    if temp_payment['payer_account_id'] is not None:
+        with connection.cursor() as cursor:
+            try:
+                query = 'SELECT individual.name ' \
+                        'FROM account, individual, user ' \
+                        'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+                cursor.execute(query, [temp_payment['payer_account_id']])
+                row = cursor.fetchone()
+                payer_name = row[0]
+            except Exception as e:
+                print(e)
+                return Response('Error', status=500)
+    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': payer_name})
 
 @api_view(['POST'])
 def get_temp_payment_peyee(request):
