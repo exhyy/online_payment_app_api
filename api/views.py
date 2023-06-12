@@ -325,7 +325,7 @@ def create_payment(request):
     temp_payment_key = data['tempPaymentKey']
     payer_account_id = data['payerAccountId']
     payee_account_id = data['payeeAccountId']
-    amount = data['amount']
+    amount = float(data['amount'])
     method = data['method']
     time_now = datetime.datetime.now()
     if cache.ttl(temp_payment_key) == 0:
@@ -338,6 +338,34 @@ def create_payment(request):
         else:
             with connection.cursor() as cursor:
                 try:
+                    if method == 'Balance':
+                        # 查询付款方余额
+                        query = 'SELECT balance FROM account WHERE id = %s'
+                        cursor.execute(query, [payer_account_id])
+                        row = cursor.fetchone()
+                        payer_balance = float(row[0])
+                        if payer_balance < amount:
+                            return Response({'errCode': 3, 'errMsg': 'No sufficient balance'})
+                        
+                        # 修改付款方余额
+                        query = 'UPDATE account '\
+                            'SET balance = %s ' \
+                            'WHERE id = %s;'
+                        cursor.execute(query, [payer_balance - amount, payer_account_id])
+                    
+                    # 查询付款方余额
+                    query = 'SELECT balance FROM account WHERE id = %s'
+                    cursor.execute(query, [payee_account_id])
+                    row = cursor.fetchone()
+                    payee_balance = float(row[0])
+                    
+                    # 修改收款方余额
+                    query = 'UPDATE account '\
+                            'SET balance = %s ' \
+                            'WHERE id = %s;'
+                    cursor.execute(query, [payee_balance + amount, payee_account_id])
+                    
+                    # 创建支付记录
                     query = 'INSERT INTO payment ' \
                             '(payer_account_id, payee_account_id, method, time, amount) ' \
                             'VALUES ' \
