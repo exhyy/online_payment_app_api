@@ -120,13 +120,33 @@ def get_account_payment_preview(request):
         try:
             datas = []
             
-            query = 'CALL get_account_payment_preview_merchant(%s);'
+            query = 'CALL get_account_payment_preview_merchant_payer(%s);'
             cursor.execute(query, [account_id])
-            datas += dictfetchall(cursor)
+            _datas = dictfetchall(cursor)
+            for _data in _datas:
+                _data['symbol'] = '-';
+            datas += _datas
             
-            query = 'CALL get_account_payment_preview_individual(%s);'
+            query = 'CALL get_account_payment_preview_individual_payer(%s);'
             cursor.execute(query, [account_id])
-            datas += dictfetchall(cursor)
+            _datas = dictfetchall(cursor)
+            for _data in _datas:
+                _data['symbol'] = '-';
+            datas += _datas
+            
+            query = 'CALL get_account_payment_preview_merchant_payee(%s);'
+            cursor.execute(query, [account_id])
+            _datas = dictfetchall(cursor)
+            for _data in _datas:
+                _data['symbol'] = '+';
+            datas += _datas
+            
+            query = 'CALL get_account_payment_preview_individual_payee(%s);'
+            cursor.execute(query, [account_id])
+            _datas = dictfetchall(cursor)
+            for _data in _datas:
+                _data['symbol'] = '+';
+            datas += _datas
         except Exception as e:
             print(e)
             return Response('Error', status=500)
