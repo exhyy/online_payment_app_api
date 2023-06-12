@@ -5,6 +5,7 @@ from django.db import connection
 from django.core.cache import cache
 
 import hashlib
+import datetime
 
 from .utils import status_dict, gender_dict, calculate_age, dictfetchall
 
@@ -222,7 +223,7 @@ def create_temp_payment(request):
     data = request.data
     account_id, token = data['accountId'], data['token']
     cache_key = f'{account_id}_{token}'
-    cache.set(cache_key, {'payer_account_id': None, 'payee_account_id': account_id, 'status': 'waiting'}, timeout=10)
+    cache.set(cache_key, {'payer_account_id': None, 'payee_account_id': account_id}, timeout=10)
     return Response({'errCode': 0, 'errMsg': 'Successful', 'data': cache_key})
 
 @api_view(['POST'])
@@ -236,10 +237,79 @@ def renewal_temp_payment(request):
     return Response({'errCode': 0, 'errMsg': 'Successful'})
 
 @api_view(['POST'])
-def get_temp_payment_status(request):
+def get_temp_payment_peyee(request):
     data = request.data
-    cache_key = data['tempPaymentKey']
-    cache.expire(cache_key, timeout=10)
-    if cache.ttl(cache_key) == 0:
+    temp_payment_key, payer_account_id = data['tempPaymentKey'], data['payerAccountId']
+    cache.expire(temp_payment_key, timeout=10)
+    if cache.ttl(temp_payment_key) == 0:
         return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
-    return Response({'errCode': 0, 'errMsg': 'Successful', 'data': cache.get(cache_key)['status']})
+    else:
+        temp_payment = cache.get(temp_payment_key)
+        lock = cache.get(f'{temp_payment_key}_lock')
+        if temp_payment is None or temp_payment['payer_account_id'] != payer_account_id or lock != payer_account_id:
+            return Response({'errCode': 2, 'errMsg': 'Authentication error'})
+        else:
+            with connection.cursor() as cursor:
+                try:
+                    query = 'SELECT individual.name ' \
+                            'FROM account, individual, user ' \
+                            'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+                    cursor.execute(query, [temp_payment['payee_account_id']])
+                    row = cursor.fetchone()
+                    payee_name = row[0]
+                except Exception as e:
+                    print(e)
+                    return Response('Error', status=500)
+            
+            return Response({'errCode': 0, 'errMsg': 'Successful', 'data': {'accountId': temp_payment['payee_account_id'], 'name': payee_name}})
+
+@api_view(['POST'])
+def lock_temp_payment(request):
+    data = request.data
+    temp_payment_key = data['tempPaymentKey']
+    locker_id = data['lockerId']
+    if cache.ttl(temp_payment_key) == 0:
+        return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
+    else:
+        lock_key = f'{temp_payment_key}_lock'
+        if cache.set(lock_key, locker_id, nx=True):
+            cache.expire(lock_key, timeout=10)
+            temp_payment = cache.get(temp_payment_key)
+            payee_account_id = temp_payment['payee_account_id']
+            cache.set(temp_payment_key, {'payer_account_id': locker_id, 'payee_account_id': payee_account_id}, timeout=10)
+            return Response({'errCode': 0, 'errMsg': 'Successful'})
+        else:
+            return Response({'errCode': 2, 'errMsg': 'Temp payment already locked by others'})
+
+@api_view(['POST'])
+def create_payment(request):
+    data = request.data
+    temp_payment_key = data['tempPaymentKey']
+    payer_account_id = data['payerAccountId']
+    payee_account_id = data['payeeAccountId']
+    amount = data['amount']
+    method = data['method']
+    time_now = datetime.datetime.now()
+    if cache.ttl(temp_payment_key) == 0:
+        return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
+    else:
+        temp_payment = cache.get(temp_payment_key)
+        lock = cache.get(f'{temp_payment_key}_lock')
+        if lock != payer_account_id or temp_payment is None or temp_payment['payer_account_id'] != payer_account_id or temp_payment['payee_account_id'] != payee_account_id:
+            return Response({'errCode': 2, 'errMsg': 'Authentication error'})
+        else:
+            with connection.cursor() as cursor:
+                try:
+                    query = 'INSERT INTO payment ' \
+                            '(payer_account_id, payee_account_id, method, time, amount) ' \
+                            'VALUES ' \
+                            '(%s, %s, %s, %s, %s);'
+                    cursor.execute(query, [payer_account_id, payee_account_id, method, time_now, amount])
+                    
+                except Exception as e:
+                    print(e)
+                    return Response({'errCode': -1, 'errMsg': 'Unknown Error'})
+            
+            cache.delete_pattern(temp_payment_key)
+            cache.delete_pattern(f'{temp_payment_key}_lock')
+            return Response({'errCode': 0, 'errMsg': 'Successful'})

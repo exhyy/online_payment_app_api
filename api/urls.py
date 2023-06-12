@@ -15,5 +15,7 @@ urlpatterns = [
     path('account/bankcard/add', views.add_account_bank_card),
     path('account/payment/temp/create', views.create_temp_payment),
     path('account/payment/temp/renewal', views.renewal_temp_payment),
-    path('account/payment/temp/getstatus', views.get_temp_payment_status),
+    path('account/payment/temp/getpayee', views.get_temp_payment_peyee),
+    path('account/payment/temp/lock', views.lock_temp_payment),
+    path('account/payment/create', views.create_payment),
 ]
