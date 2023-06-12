@@ -288,6 +288,21 @@ def lock_temp_payment(request):
             return Response({'errCode': 2, 'errMsg': 'Temp payment already locked by others'})
 
 @api_view(['POST'])
+def renewal_temp_payment_lock(request):
+    data = request.data
+    temp_payment_key = data['tempPaymentKey']
+    locker_id = data['lockerId']
+    if cache.ttl(temp_payment_key) == 0:
+        return Response({'errCode': 1, 'errMsg': 'Temp payment not exist'})
+    else:
+        lock_key = f'{temp_payment_key}_lock'
+        if cache.get(lock_key) != locker_id:
+            return Response({'errCode': 2, 'errMsg': 'Authentication error'})
+        else:
+            cache.expire(lock_key, timeout=10)
+            return Response({'errCode': 0, 'errMsg': 'Successful'})
+
+@api_view(['POST'])
 def create_payment(request):
     data = request.data
     temp_payment_key = data['tempPaymentKey']
