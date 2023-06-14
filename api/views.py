@@ -366,7 +366,7 @@ def create_payment(request):
                 try:
                     if method == 'Balance':
                         # 查询付款方余额
-                        query = 'SELECT balance FROM account WHERE id = %s'
+                        query = 'SELECT balance FROM account WHERE id = %s FOR UPDATE'
                         cursor.execute(query, [payer_account_id])
                         row = cursor.fetchone()
                         payer_balance = float(row[0])
@@ -378,9 +378,10 @@ def create_payment(request):
                             'SET balance = %s ' \
                             'WHERE id = %s;'
                         cursor.execute(query, [payer_balance - amount, payer_account_id])
+                        cursor.execute('COMMIT')
                     
-                    # 查询付款方余额
-                    query = 'SELECT balance FROM account WHERE id = %s'
+                    # 查询收款方余额
+                    query = 'SELECT balance FROM account WHERE id = %s FOR UPDATE'
                     cursor.execute(query, [payee_account_id])
                     row = cursor.fetchone()
                     payee_balance = float(row[0])
@@ -390,6 +391,7 @@ def create_payment(request):
                             'SET balance = %s ' \
                             'WHERE id = %s;'
                     cursor.execute(query, [payee_balance + amount, payee_account_id])
+                    cursor.execute('COMMIT')
                     
                     # 创建支付记录
                     query = 'INSERT INTO payment ' \
