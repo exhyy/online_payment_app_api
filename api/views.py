@@ -59,6 +59,8 @@ def create_user(request):
                         '(%s, %s, %s, %s);'
                 gender = data['gender'] if data['gender'] != 'unknown' else None
                 cursor.execute(query, [data['name'], gender, data['birthday'], user_id])
+
+            cursor.execute('COMMIT')
                 
         except:
             return Response('Failed', status=500)
@@ -147,6 +149,7 @@ def get_account_payment_preview(request):
             for _data in _datas:
                 _data['symbol'] = '+';
             datas += _datas
+            cursor.execute('COMMIT')
         except Exception as e:
             print(e)
             return Response('Error', status=500)
@@ -185,6 +188,7 @@ def edit_account_info(request):
         try:
             query = 'CALL edit_account_info(%s, %s, %s, %s)'
             cursor.execute(query, [account_id, name, gender, birthday])
+            cursor.execute('COMMIT')
             
         except Exception as e:
             print(e)
@@ -217,6 +221,7 @@ def delete_account_bank_card(request):
         try:
             query = 'CALL delete_account_bank_card(%s, %s);'
             cursor.execute(query, [account_id, number])
+            cursor.execute('COMMIT')
             
         except Exception as e:
             print(e)
@@ -238,6 +243,7 @@ def add_account_bank_card(request):
 
             query = 'CALL add_account_bank_card(%s, %s, %s, %s, %s);'
             cursor.execute(query, [account_id, data['number'], data['type'], data['expirationDate'], data['bankName']])
+            cursor.execute('COMMIT')
             
         except Exception as e:
             print(e)
@@ -391,6 +397,7 @@ def create_payment(request):
                             'VALUES ' \
                             '(%s, %s, %s, %s, %s);'
                     cursor.execute(query, [payer_account_id, payee_account_id, method, time_now, amount])
+                    cursor.execute('COMMIT')
                     
                 except Exception as e:
                     print(e)

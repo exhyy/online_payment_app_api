@@ -85,6 +85,7 @@ WSGI_APPLICATION = 'online_payment_api.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
+        'AUTOCOMMIT': False,
         'OPTIONS': {
             'read_default_file': '/root/code/online_payment_api/my.cnf',
         }
