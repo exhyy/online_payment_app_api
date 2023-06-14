@@ -162,9 +162,14 @@ def get_account_info(request):
     info = []
     with connection.cursor() as cursor:
         try:
+            # query = 'SELECT account.status, individual.name, individual.gender, individual.birthday, user.mobile_number ' \
+            #         'FROM account, individual, user ' \
+            #         'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
             query = 'SELECT account.status, individual.name, individual.gender, individual.birthday, user.mobile_number ' \
-                    'FROM account, individual, user ' \
-                    'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+                    'FROM account ' \
+                    'INNER JOIN user ON account.user_id = user.id ' \
+                    'INNER JOIN individual ON user.id = individual.user_id ' \
+                    'WHERE account.id = %s;'
             cursor.execute(query, [account_id])
             row = cursor.fetchone()
             info.append({'title': '账户状态', 'content': status_dict[row[0]]})
@@ -271,9 +276,14 @@ def renewal_temp_payment(request):
     if temp_payment['payer_account_id'] is not None:
         with connection.cursor() as cursor:
             try:
+                # query = 'SELECT individual.name ' \
+                #         'FROM account, individual, user ' \
+                #         'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
                 query = 'SELECT individual.name ' \
-                        'FROM account, individual, user ' \
-                        'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+                        'FROM individual ' \
+                        'INNER JOIN user ON individual.user_id = user.id ' \
+                        'INNER JOIN account ON account.user_id = user.id ' \
+                        'WHERE account.id = %s;'
                 cursor.execute(query, [temp_payment['payer_account_id']])
                 row = cursor.fetchone()
                 payer_name = row[0]
@@ -297,9 +307,14 @@ def get_temp_payment_peyee(request):
         else:
             with connection.cursor() as cursor:
                 try:
+                    # query = 'SELECT individual.name ' \
+                    #         'FROM account, individual, user ' \
+                    #         'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
                     query = 'SELECT individual.name ' \
-                            'FROM account, individual, user ' \
-                            'WHERE account.id = %s AND account.user_id = user.id AND individual.user_id = user.id;'
+                            'FROM individual ' \
+                            'INNER JOIN user ON individual.user_id = user.id ' \
+                            'INNER JOIN account ON account.user_id = user.id ' \
+                            'WHERE account.id = %s;'
                     cursor.execute(query, [temp_payment['payee_account_id']])
                     row = cursor.fetchone()
                     payee_name = row[0]
